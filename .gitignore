@@ -1,0 +1,24 @@
+# R session
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.Renviron
+
+# Build artefacts
+*.Rproj
+*.Rcheck/
+*.tar.gz
+*.tgz
+*.zip
+docs/
+inst/doc/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp

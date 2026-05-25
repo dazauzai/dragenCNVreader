@@ -1,0 +1,34 @@
+Package: dragenCNVreader
+Type: Package
+Title: Read and Parse DRAGEN CNV VCF Files
+Version: 0.1.0
+Authors@R: person(
+    given = "Yiming",
+    family = "Jiang",
+    email = "zbjiangyiming@gmail.com",
+    role = c("aut", "cre"))
+Description: Reads CNV (copy-number variation) VCF files produced by the
+    Illumina DRAGEN secondary-analysis pipeline. Parses the multi-key
+    FORMAT field (GT, CN, MCN, CNQ, MCNQ, CNF, MCNF, MF, SM, SD, MAF,
+    BC, AS, PE) into separate columns, normalises the DRAGEN ALT codes
+    (DEL/DUP/LOH) into a tidy 'cnv' category (loss / gain / cn-LOH /
+    LOH), and returns both the PASS-only and the full call set as
+    data frames. Single-file and recursive batch modes are supported.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends:
+    R (>= 4.0.0)
+Imports:
+    data.table,
+    dplyr,
+    tidyr,
+    stringr,
+    magrittr
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+URL: https://github.com/dazauzai/dragenCNVreader
+BugReports: https://github.com/dazauzai/dragenCNVreader/issues
+Config/testthat/edition: 3
+RoxygenNote: 7.3.2

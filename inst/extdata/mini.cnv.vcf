@@ -1,0 +1,21 @@
+##fileformat=VCFv4.1
+##source=DRAGEN_CNV_test
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=CN,Number=1,Type=Integer,Description="Estimated copy number">
+##FORMAT=<ID=MCN,Number=1,Type=Integer,Description="Estimated minor copy number">
+##FORMAT=<ID=CNQ,Number=1,Type=Float,Description="Phred-scaled quality for the CN call">
+##FORMAT=<ID=MCNQ,Number=1,Type=Float,Description="Phred-scaled quality for the MCN call">
+##FORMAT=<ID=CNF,Number=1,Type=Float,Description="Fractional copy number estimate">
+##FORMAT=<ID=MCNF,Number=1,Type=Float,Description="Fractional minor copy number estimate">
+##FORMAT=<ID=MF,Number=1,Type=Float,Description="Median fold enrichment in segment">
+##FORMAT=<ID=SM,Number=1,Type=Float,Description="Segment mean log2 ratio">
+##FORMAT=<ID=SD,Number=1,Type=Float,Description="Segment standard deviation">
+##FORMAT=<ID=MAF,Number=1,Type=Float,Description="Mean minor allele frequency">
+##FORMAT=<ID=BC,Number=1,Type=Integer,Description="Number of bins in segment">
+##FORMAT=<ID=AS,Number=1,Type=Integer,Description="Number of allelic sites in segment">
+##FORMAT=<ID=PE,Number=2,Type=Integer,Description="Number of paired-end reads supporting break ends">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HSS_TEST
+chr1	1000000	DRAGEN:LOSS:chr1:1000000-1010000	N	<DEL>	120	PASS	END=1010000	GT:CN:MCN:CNQ:MCNQ:CNF:MCNF:MF:SM:SD:MAF:BC:AS:PE	0/1:1:0:120.5:50.2:1.05:0.10:0.55:-0.95:0.05:0.10:25:8:3,4
+chr2	2000000	DRAGEN:GAIN:chr2:2000000-2020000	N	<DUP>	200	PASS	END=2020000	GT:CN:MCN:CNQ:MCNQ:CNF:MCNF:MF:SM:SD:MAF:BC:AS:PE	0/1:3:1:200.1:60.3:3.10:1.05:1.60:0.60:0.05:0.30:40:14:6,5
+chr3	3000000	DRAGEN:LOH:chr3:3000000-3030000	N	<LOH>	80	PASS	END=3030000	GT:CN:MCN:CNQ:MCNQ:CNF:MCNF:MF:SM:SD:MAF:BC:AS:PE	0/0:2:0:80.2:30.0:2.00:0.00:1.00:0.00:0.02:0.02:30:11:0,0
+chr4	4000000	DRAGEN:LOSS:chr4:4000000-4001000	N	<DEL>	5	cnvQual	END=4001000	GT:CN:MCN:CNQ:MCNQ:CNF:MCNF:MF:SM:SD:MAF:BC:AS:PE	./.:1:0:5.0:1.0:1.10:0.30:0.50:-0.30:0.20:0.40:3:1:0,0
