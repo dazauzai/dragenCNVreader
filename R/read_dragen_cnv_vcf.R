@@ -156,7 +156,7 @@ read_dragen_cnv_vcf <- function(vcf_file  = NULL,
           ALT_clean == "DUP"               ~ "gain",
           ALT_clean == "LOH" & CN == 2     ~ "cn-LOH",
           ALT_clean == "LOH"               ~ "LOH",
-          TRUE                             ~ NA_character_
+          TRUE                             ~ ALT_clean
         )
       )
 
