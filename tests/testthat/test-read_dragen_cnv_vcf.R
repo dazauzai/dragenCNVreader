@@ -30,11 +30,9 @@ test_that("single-file mode parses a tiny DRAGEN CNV VCF", {
   )
   expect_true(all(pass_keys %in% all_pass))
 
-  # cnv categorisation: DEL/DUP/LOH keep semantic names; the new
-  # codes added in 0.2.0 are lower-case
+  # Passed_CNV is restricted to real CNV events (DEL/DUP/LOH)
   expect_true(all(res$Passed_CNV$cnv %in%
-                    c("loss", "gain", "cn-LOH", "LOH",
-                      "ref", "inv", "ins", "bnd")))
+                    c("loss", "gain", "cn-LOH", "LOH")))
 
   # format_lines must be character of ##FORMAT lines
   expect_type(res$format_lines, "character")
@@ -67,7 +65,8 @@ test_that("ALT='.' (DRAGEN REF segments) is accepted and mapped to 'ref'", {
 
   res <- read_dragen_cnv_vcf(vcf_file = with_ref)
   expect_true("ref" %in% res$All_CNV$cnv)
-  expect_true("ref" %in% res$Passed_CNV$cnv)
+  # REF segments are not CNVs — they must NOT leak into Passed_CNV
+  expect_false("ref" %in% res$Passed_CNV$cnv)
 })
 
 test_that("unsupported ALT codes raise an error", {

@@ -18,8 +18,10 @@ that:
   segments) into a tidy `cnv` category
   (`loss` / `gain` / `cn-LOH` / `LOH` / `ref` / `inv` / `ins` / `bnd`),
   and **errors out** on any ALT outside that set;
-- returns both the **PASS-only** call set and the **full** call set, plus
-  the `##FORMAT=` lines from the VCF header;
+- returns both the **PASS-only CNV** call set (DEL / DUP / LOH only —
+  REF segments and INV / INS / BND structural variants are excluded
+  here) and the **full** call set, plus the `##FORMAT=` lines from
+  the VCF header;
 - optionally writes the chosen table(s) to disk via `out_dir` / `out_type`,
   with overridable separator (`out_sep`) and header (`out_col`).
 
@@ -187,7 +189,7 @@ directory is created if it does not already exist.
 | chr        | char    | chromosome (e.g. `chr1`)                   |
 | start      | integer | 1-based start (from VCF `POS`)             |
 | end        | integer | end coordinate (parsed from `ID`)          |
-| cnv        | char    | one of `loss` / `gain` / `cn-LOH` / `LOH` / `ref` / `inv` / `ins` / `bnd` |
+| cnv        | char    | one of `loss` / `gain` / `cn-LOH` / `LOH` (Passed_CNV is restricted to these; All_CNV may additionally contain `ref` / `inv` / `ins` / `bnd`) |
 | CN         | numeric | total copy number from FORMAT/CN           |
 | sample_id  | char    | sample name (the column after FORMAT)      |
 

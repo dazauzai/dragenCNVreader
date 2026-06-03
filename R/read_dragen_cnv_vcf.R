@@ -37,7 +37,9 @@
 #' If `vcf_file` is supplied, a `list` with three named elements:
 #' \describe{
 #'   \item{`Passed_CNV`}{data.frame: chr, start, end, cnv, CN, sample_id;
-#'         filtered to FILTER == "PASS".}
+#'         filtered to FILTER == "PASS" and ALT in DEL/DUP/LOH (i.e.
+#'         actual CNV events; REF segments and INV/INS/BND structural
+#'         variants are excluded — they remain in All_CNV).}
 #'   \item{`All_CNV`}{data.frame: all CNV records with the FORMAT fields
 #'         expanded into separate columns (GT, CN, MCN, CNQ, MCNQ, CNF,
 #'         MCNF, MF, SM, SD, MAF, BC, AS, PE) plus QUAL, FILTER, ALT,
@@ -268,9 +270,12 @@ read_dragen_cnv_vcf <- function(vcf_file  = NULL,
         dplyr::all_of(expected_format_cols), sample_id
       )
 
-    # 12. Passed_CNV table (ALTs already validated above)
+    # 12. Passed_CNV table: PASS rows that are real CNV events.
+    # REF segments (.) and the structural-variant ALTs (INV/INS/BND)
+    # are still parsed into All_CNV but excluded here.
     Passed_CNV <- df_parsed %>%
-      dplyr::filter(FILTER == "PASS") %>%
+      dplyr::filter(FILTER == "PASS",
+                    ALT_clean %in% c("DEL", "DUP", "LOH")) %>%
       dplyr::select(chr, start, end, cnv, CN, sample_id)
 
     list(

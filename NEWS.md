@@ -1,3 +1,12 @@
+# dragenCNVreader 0.2.2
+
+- `read_dragen_cnv_vcf()`:
+  - Restore the original `Passed_CNV` ALT filter (DEL / DUP / LOH).
+    0.2.0 had dropped this filter, which let REF segments (and the
+    new INV / INS / BND structural variants) leak into the PASS-only
+    CNV table. They still appear in `All_CNV` — only the CNV-focused
+    `Passed_CNV` view is restricted.
+
 # dragenCNVreader 0.2.1
 
 - `read_dragen_cnv_vcf()`:

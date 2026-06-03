@@ -52,7 +52,9 @@ extension switches to \code{.csv}, otherwise \code{.tsv}.}
 If \code{vcf_file} is supplied, a \code{list} with three named elements:
 \describe{
   \item{\code{Passed_CNV}}{data.frame: chr, start, end, cnv, CN, sample_id;
-        filtered to FILTER == "PASS".}
+        filtered to FILTER == "PASS" and ALT in DEL/DUP/LOH (i.e.
+        actual CNV events; REF segments and INV/INS/BND structural
+        variants are excluded — they remain in All_CNV).}
   \item{\code{All_CNV}}{data.frame: all CNV records with the FORMAT fields
         expanded into separate columns (GT, CN, MCN, CNQ, MCNQ, CNF,
         MCNF, MF, SM, SD, MAF, BC, AS, PE) plus QUAL, FILTER, ALT,

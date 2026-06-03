@@ -1,7 +1,7 @@
 Package: dragenCNVreader
 Type: Package
 Title: Read and Parse DRAGEN CNV VCF Files
-Version: 0.2.1
+Version: 0.2.2
 Authors@R: person(
     given = "Yiming",
     family = "Jiang",
