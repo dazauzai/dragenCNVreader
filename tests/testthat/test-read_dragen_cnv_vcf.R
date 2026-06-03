@@ -30,9 +30,10 @@ test_that("single-file mode parses a tiny DRAGEN CNV VCF", {
   )
   expect_true(all(pass_keys %in% all_pass))
 
-  # cnv categorisation
+  # cnv categorisation (all lower-case)
   expect_true(all(res$Passed_CNV$cnv %in%
-                    c("loss", "gain", "cn-LOH", "LOH")))
+                    c("loss", "gain", "cn-loh", "loh",
+                      "ref", "inv", "ins", "bnd")))
 
   # format_lines must be character of ##FORMAT lines
   expect_type(res$format_lines, "character")
@@ -44,4 +45,52 @@ test_that("input validation works", {
                "Please provide either")
   expect_error(read_dragen_cnv_vcf(vcf_dir = tempdir()),
                "No VCF files found")
+})
+
+test_that("unsupported ALT codes raise an error", {
+  vcf <- system.file("extdata", "mini.cnv.vcf",
+                     package = "dragenCNVreader")
+  skip_if(vcf == "", "Example VCF not installed; skipping.")
+
+  bad <- tempfile(fileext = ".vcf")
+  lines <- readLines(vcf)
+  # Replace the first data row's ALT (<DEL>) with an unsupported code
+  data_idx <- grep("^chr", lines)[1]
+  lines[data_idx] <- sub("<DEL>", "<FOO>", lines[data_idx], fixed = TRUE)
+  writeLines(lines, bad)
+
+  expect_error(read_dragen_cnv_vcf(vcf_file = bad),
+               "Unsupported ALT")
+})
+
+test_that("out_dir writes the requested tables", {
+  vcf <- system.file("extdata", "mini.cnv.vcf",
+                     package = "dragenCNVreader")
+  skip_if(vcf == "", "Example VCF not installed; skipping.")
+
+  out <- file.path(tempfile("cnvout_"))
+  res <- read_dragen_cnv_vcf(
+    vcf_file = vcf,
+    out_dir  = out,
+    out_type = c("All_CNV", "pass")
+  )
+  sample_name <- unique(res$All_CNV$sample_id)[1]
+
+  expect_true(file.exists(file.path(out,
+                                    paste0(sample_name, ".All_CNV.tsv"))))
+  expect_true(file.exists(file.path(out,
+                                    paste0(sample_name, ".Passed_CNV.tsv"))))
+})
+
+test_that("unknown out_type values raise an error", {
+  vcf <- system.file("extdata", "mini.cnv.vcf",
+                     package = "dragenCNVreader")
+  skip_if(vcf == "", "Example VCF not installed; skipping.")
+
+  expect_error(
+    read_dragen_cnv_vcf(vcf_file = vcf,
+                        out_dir  = tempfile("cnvout_"),
+                        out_type = "nope"),
+    "Unknown out_type"
+  )
 })

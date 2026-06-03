@@ -2,9 +2,9 @@
 #'
 #' Reads CNV (copy-number variation) VCF files produced by the Illumina
 #' DRAGEN pipeline, parses the multi-key FORMAT field into separate
-#' columns, normalises the DRAGEN ALT codes (DEL / DUP / LOH) into a tidy
-#' `cnv` category (loss / gain / cn-LOH / LOH), and returns both the
-#' PASS-only and the full call set as data frames.
+#' columns, normalises the DRAGEN ALT codes into a tidy lower-case
+#' `cnv` category, and returns both the PASS-only and the full call set
+#' as data frames. Optionally writes the chosen table to disk.
 #'
 #' Single-file and recursive batch modes are supported.
 #'
@@ -18,12 +18,26 @@
 #'   `endsWith()` so a custom value like `"cnv.vcf.gz"` works too.
 #' @param recursive Logical. When `vcf_dir` is set, whether to recurse
 #'   into sub-directories. Default `FALSE`.
+#' @param out_dir   Character or `NULL`. When set, the chosen table(s)
+#'   (see `out_type`) are written to this directory using
+#'   `utils::write.table()`. The directory is created if it does not
+#'   exist. Default `NULL` (no files written).
+#' @param out_type  Character vector. Which table(s) to write when
+#'   `out_dir` is set. Case-insensitive; accepts `"All_CNV"` /
+#'   `"all"`, and `"Passed_CNV"` / `"passed"` / `"pass"`. Multiple
+#'   values are allowed. Default `"All_CNV"`. Unknown values raise an
+#'   error.
+#' @param out_sep   Character. Field separator passed to `write.table()`
+#'   when writing output. Default `"\t"`. If set to `","` the file
+#'   extension switches to `.csv`, otherwise `.tsv`.
+#' @param out_col   Logical. Value of `col.names` passed to
+#'   `write.table()` when writing output. Default `FALSE`.
 #'
 #' @return
 #' If `vcf_file` is supplied, a `list` with three named elements:
 #' \describe{
 #'   \item{`Passed_CNV`}{data.frame: chr, start, end, cnv, CN, sample_id;
-#'         filtered to FILTER == "PASS" and ALT in DEL/DUP/LOH.}
+#'         filtered to FILTER == "PASS".}
 #'   \item{`All_CNV`}{data.frame: all CNV records with the FORMAT fields
 #'         expanded into separate columns (GT, CN, MCN, CNQ, MCNQ, CNF,
 #'         MCNF, MF, SM, SD, MAF, BC, AS, PE) plus QUAL, FILTER, ALT,
@@ -39,9 +53,21 @@
 #' The FORMAT/sample column is split on `:` into the keys named in the
 #' FORMAT string, and pivoted into separate columns. Numeric-like
 #' columns (CN, MCN, CNQ, MCNQ, MF, SM, SD, MAF, BC, AS) are coerced to
-#' numeric. ALT values are stripped of `<>` brackets and mapped to the
-#' tidy `cnv` category: `"DEL" -> "loss"`, `"DUP" -> "gain"`,
-#' `"LOH"` with `CN == 2` -> `"cn-LOH"`, other `"LOH"` -> `"LOH"`.
+#' numeric.
+#'
+#' ALT values are stripped of `<>` brackets and validated against the
+#' supported set `DEL`, `DUP`, `LOH`, `REF`, `INV`, `INS`, `BND`. Any
+#' other value raises an error. Supported ALTs are mapped to the
+#' lower-case `cnv` category:
+#'
+#' * `DEL` -> `loss`
+#' * `DUP` -> `gain`
+#' * `LOH` with `CN == 2` -> `cn-loh`
+#' * `LOH` otherwise -> `loh`
+#' * `REF` -> `ref`
+#' * `INV` -> `inv`
+#' * `INS` -> `ins`
+#' * `BND` -> `bnd`
 #'
 #' @examples
 #' \dontrun{
@@ -60,6 +86,22 @@
 #'   suffix    = "cnv.vcf.gz",
 #'   recursive = TRUE
 #' )
+#'
+#' # Write per-sample All_CNV tables to disk as TSV
+#' read_dragen_cnv_vcf(
+#'   vcf_dir  = "cnv_vcfs/",
+#'   out_dir  = "cnv_tsv/",
+#'   out_type = "All_CNV"
+#' )
+#'
+#' # Write both All_CNV and Passed_CNV as CSV, with a header row
+#' read_dragen_cnv_vcf(
+#'   vcf_dir  = "cnv_vcfs/",
+#'   out_dir  = "cnv_csv/",
+#'   out_type = c("All_CNV", "pass"),
+#'   out_sep  = ",",
+#'   out_col  = TRUE
+#' )
 #' }
 #'
 #' @export
@@ -69,10 +111,56 @@
 #' @importFrom stats setNames
 #' @importFrom stringr str_remove_all str_split str_trim
 #' @importFrom tidyr pivot_wider unnest_longer
+#' @importFrom utils write.table
 read_dragen_cnv_vcf <- function(vcf_file  = NULL,
                                 vcf_dir   = NULL,
                                 suffix    = "vcf,vcf.gz",
-                                recursive = FALSE) {
+                                recursive = FALSE,
+                                out_dir   = NULL,
+                                out_type  = "All_CNV",
+                                out_sep   = "\t",
+                                out_col   = FALSE) {
+
+  # Canonical ALT -> cnv mapping. All cnv values are lower-case.
+  # Extend `allowed_alts` here to support new ALT codes in future.
+  allowed_alts <- c("DEL", "DUP", "LOH", "REF", "INV", "INS", "BND")
+
+  # out_type lookup. Keys are lower-case; values are slot names in the
+  # per-sample result list. Add new (key, slot) pairs here to expose
+  # additional output tables.
+  out_type_map <- list(
+    "all_cnv"    = "All_CNV",
+    "all"        = "All_CNV",
+    "passed_cnv" = "Passed_CNV",
+    "passed"     = "Passed_CNV",
+    "pass"       = "Passed_CNV"
+  )
+
+  resolve_out_types <- function(out_type) {
+    keys <- tolower(out_type)
+    bad  <- keys[!keys %in% names(out_type_map)]
+    if (length(bad) > 0) {
+      stop("Unknown out_type value(s): ",
+           paste(unique(bad), collapse = ", "),
+           ". Allowed: ",
+           paste(unique(names(out_type_map)), collapse = ", "))
+    }
+    unique(unlist(out_type_map[keys], use.names = FALSE))
+  }
+
+  write_one_result <- function(result, sample_name, out_dir, slots,
+                               out_sep, out_col) {
+    ext <- if (identical(out_sep, ",")) ".csv" else ".tsv"
+    for (slot in slots) {
+      tbl <- result[[slot]]
+      if (is.null(tbl)) next
+      out_file <- file.path(out_dir,
+                            paste0(sample_name, ".", slot, ext))
+      utils::write.table(tbl, file = out_file,
+                         row.names = FALSE, col.names = out_col,
+                         sep = out_sep, quote = FALSE)
+    }
+  }
 
   parse_one_vcf <- function(vcf_file) {
 
@@ -144,19 +232,29 @@ read_dragen_cnv_vcf <- function(vcf_file  = NULL,
         )
       )
 
-    # 9. Standardise ALT
+    # 9. Standardise ALT and validate against the supported set
     df_parsed <- df_parsed %>%
       dplyr::mutate(ALT_clean = stringr::str_remove_all(ALT, "[<>]"))
 
-    # 10. Convert DRAGEN ALT into CNV category
+    bad_alts <- setdiff(unique(df_parsed$ALT_clean), allowed_alts)
+    if (length(bad_alts) > 0) {
+      stop("Unsupported ALT value(s) in '", vcf_file, "': ",
+           paste(bad_alts, collapse = ", "),
+           ". Allowed: ", paste(allowed_alts, collapse = ", "))
+    }
+
+    # 10. Convert DRAGEN ALT into the lower-case cnv category
     df_parsed <- df_parsed %>%
       dplyr::mutate(
         cnv = dplyr::case_when(
-          ALT_clean == "DEL"               ~ "loss",
-          ALT_clean == "DUP"               ~ "gain",
-          ALT_clean == "LOH" & CN == 2     ~ "cn-LOH",
-          ALT_clean == "LOH"               ~ "LOH",
-          TRUE                             ~ ALT_clean
+          ALT_clean == "DEL"             ~ "loss",
+          ALT_clean == "DUP"             ~ "gain",
+          ALT_clean == "LOH" & CN == 2   ~ "cn-loh",
+          ALT_clean == "LOH"             ~ "loh",
+          ALT_clean == "REF"             ~ "ref",
+          ALT_clean == "INV"             ~ "inv",
+          ALT_clean == "INS"             ~ "ins",
+          ALT_clean == "BND"             ~ "bnd"
         )
       )
 
@@ -167,10 +265,9 @@ read_dragen_cnv_vcf <- function(vcf_file  = NULL,
         dplyr::all_of(expected_format_cols), sample_id
       )
 
-    # 12. Passed_CNV table
+    # 12. Passed_CNV table (ALTs already validated above)
     Passed_CNV <- df_parsed %>%
-      dplyr::filter(FILTER == "PASS",
-                    ALT_clean %in% c("DEL", "DUP", "LOH")) %>%
+      dplyr::filter(FILTER == "PASS") %>%
       dplyr::select(chr, start, end, cnv, CN, sample_id)
 
     list(
@@ -178,6 +275,17 @@ read_dragen_cnv_vcf <- function(vcf_file  = NULL,
       format_lines = format_lines,
       All_CNV      = All_CNV
     )
+  }
+
+  # ----------------------------------------------------------
+  # Validate out_* up front so we fail fast on bad config
+  # ----------------------------------------------------------
+  slots <- NULL
+  if (!is.null(out_dir)) {
+    slots <- resolve_out_types(out_type)
+    if (!dir.exists(out_dir)) {
+      dir.create(out_dir, recursive = TRUE)
+    }
   }
 
   # ----------------------------------------------------------
@@ -205,6 +313,13 @@ read_dragen_cnv_vcf <- function(vcf_file  = NULL,
                            function(x) unique(x$All_CNV$sample_id)[1])
     names(result_list) <- make.unique(sample_names)
 
+    if (!is.null(out_dir)) {
+      for (s in names(result_list)) {
+        write_one_result(result_list[[s]], s, out_dir, slots,
+                         out_sep, out_col)
+      }
+    }
+
     all_unit <- list(
       Passed_CNV   = dplyr::bind_rows(lapply(result_list, function(x) x$Passed_CNV)),
       All_CNV      = dplyr::bind_rows(lapply(result_list, function(x) x$All_CNV)),
@@ -220,7 +335,15 @@ read_dragen_cnv_vcf <- function(vcf_file  = NULL,
   # ----------------------------------------------------------
   # Single-file mode
   # ----------------------------------------------------------
-  if (!is.null(vcf_file)) return(parse_one_vcf(vcf_file))
+  if (!is.null(vcf_file)) {
+    res <- parse_one_vcf(vcf_file)
+    if (!is.null(out_dir)) {
+      sample_name <- unique(res$All_CNV$sample_id)[1]
+      write_one_result(res, sample_name, out_dir, slots,
+                       out_sep, out_col)
+    }
+    return(res)
+  }
 
   stop("Please provide either `vcf_file` or `vcf_dir`.")
 }

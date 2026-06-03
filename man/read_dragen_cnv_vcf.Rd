@@ -8,7 +8,11 @@ read_dragen_cnv_vcf(
   vcf_file = NULL,
   vcf_dir = NULL,
   suffix = "vcf,vcf.gz",
-  recursive = FALSE
+  recursive = FALSE,
+  out_dir = NULL,
+  out_type = "All_CNV",
+  out_sep = "\t",
+  out_col = FALSE
 )
 }
 \arguments{
@@ -25,12 +29,30 @@ so a custom value like \code{"cnv.vcf.gz"} works too.}
 
 \item{recursive}{Logical. When \code{vcf_dir} is set, whether to recurse
 into sub-directories. Default \code{FALSE}.}
+
+\item{out_dir}{Character or \code{NULL}. When set, the chosen table(s)
+(see \code{out_type}) are written to this directory using
+\code{utils::write.table()}. The directory is created if it does not
+exist. Default \code{NULL} (no files written).}
+
+\item{out_type}{Character vector. Which table(s) to write when
+\code{out_dir} is set. Case-insensitive; accepts \code{"All_CNV"} /
+\code{"all"}, and \code{"Passed_CNV"} / \code{"passed"} / \code{"pass"}.
+Multiple values are allowed. Default \code{"All_CNV"}. Unknown values
+raise an error.}
+
+\item{out_sep}{Character. Field separator passed to \code{write.table()}
+when writing output. Default \code{"\t"}. If set to \code{","} the file
+extension switches to \code{.csv}, otherwise \code{.tsv}.}
+
+\item{out_col}{Logical. Value of \code{col.names} passed to
+\code{write.table()} when writing output. Default \code{FALSE}.}
 }
 \value{
 If \code{vcf_file} is supplied, a \code{list} with three named elements:
 \describe{
   \item{\code{Passed_CNV}}{data.frame: chr, start, end, cnv, CN, sample_id;
-        filtered to FILTER == "PASS" and ALT in DEL/DUP/LOH.}
+        filtered to FILTER == "PASS".}
   \item{\code{All_CNV}}{data.frame: all CNV records with the FORMAT fields
         expanded into separate columns (GT, CN, MCN, CNQ, MCNQ, CNF,
         MCNF, MF, SM, SD, MAF, BC, AS, PE) plus QUAL, FILTER, ALT,
@@ -45,10 +67,10 @@ per-sample \code{format_lines}.
 }
 \description{
 Reads CNV (copy-number variation) VCF files produced by the Illumina
-DRAGEN pipeline, parses the multi-key FORMAT field into separate columns,
-normalises the DRAGEN ALT codes (DEL / DUP / LOH) into a tidy \code{cnv}
-category (loss / gain / cn-LOH / LOH), and returns both the PASS-only
-and the full call set as data frames.
+DRAGEN pipeline, parses the multi-key FORMAT field into separate
+columns, normalises the DRAGEN ALT codes into a tidy lower-case
+\code{cnv} category, and returns both the PASS-only and the full call
+set as data frames. Optionally writes the chosen table to disk.
 
 Single-file and recursive batch modes are supported.
 }
@@ -56,10 +78,21 @@ Single-file and recursive batch modes are supported.
 The FORMAT/sample column is split on \code{:} into the keys named in the
 FORMAT string, and pivoted into separate columns. Numeric-like columns
 (CN, MCN, CNQ, MCNQ, MF, SM, SD, MAF, BC, AS) are coerced to numeric.
-ALT values are stripped of \code{<>} brackets and mapped to the tidy
-\code{cnv} category: \code{"DEL" -> "loss"}, \code{"DUP" -> "gain"},
-\code{"LOH"} with \code{CN == 2} -> \code{"cn-LOH"}, other \code{"LOH"}
--> \code{"LOH"}.
+
+ALT values are stripped of \code{<>} brackets and validated against the
+supported set \code{DEL}, \code{DUP}, \code{LOH}, \code{REF},
+\code{INV}, \code{INS}, \code{BND}. Any other value raises an error.
+Supported ALTs are mapped to the lower-case \code{cnv} category:
+\itemize{
+  \item \code{DEL} -> \code{loss}
+  \item \code{DUP} -> \code{gain}
+  \item \code{LOH} with \code{CN == 2} -> \code{cn-loh}
+  \item \code{LOH} otherwise -> \code{loh}
+  \item \code{REF} -> \code{ref}
+  \item \code{INV} -> \code{inv}
+  \item \code{INS} -> \code{ins}
+  \item \code{BND} -> \code{bnd}
+}
 }
 \examples{
 \dontrun{
@@ -77,6 +110,22 @@ res <- read_dragen_cnv_vcf(
   vcf_dir   = "cnv_vcfs/",
   suffix    = "cnv.vcf.gz",
   recursive = TRUE
+)
+
+# Write per-sample All_CNV tables to disk as TSV
+read_dragen_cnv_vcf(
+  vcf_dir  = "cnv_vcfs/",
+  out_dir  = "cnv_tsv/",
+  out_type = "All_CNV"
+)
+
+# Write both All_CNV and Passed_CNV as CSV, with a header row
+read_dragen_cnv_vcf(
+  vcf_dir  = "cnv_vcfs/",
+  out_dir  = "cnv_csv/",
+  out_type = c("All_CNV", "pass"),
+  out_sep  = ",",
+  out_col  = TRUE
 )
 }
 }

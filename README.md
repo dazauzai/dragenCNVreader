@@ -12,10 +12,15 @@ that:
 - reads one VCF file **or** every VCF in a folder (with optional recursion);
 - splits the DRAGEN `FORMAT` field
   (`GT:CN:MCN:CNQ:MCNQ:CNF:MCNF:MF:SM:SD:MAF:BC:AS:PE`) into separate columns;
-- maps the DRAGEN ALT codes (`<DEL>` / `<DUP>` / `<LOH>`) into a tidy
-  `cnv` category (`loss` / `gain` / `cn-LOH` / `LOH`);
+- maps the DRAGEN ALT codes
+  (`<DEL>` / `<DUP>` / `<LOH>` / `<REF>` / `<INV>` / `<INS>` / `<BND>`)
+  into a tidy lower-case `cnv` category
+  (`loss` / `gain` / `cn-loh` / `loh` / `ref` / `inv` / `ins` / `bnd`),
+  and **errors out** on any ALT outside that set;
 - returns both the **PASS-only** call set and the **full** call set, plus
-  the `##FORMAT=` lines from the VCF header.
+  the `##FORMAT=` lines from the VCF header;
+- optionally writes the chosen table(s) to disk via `out_dir` / `out_type`,
+  with overridable separator (`out_sep`) and header (`out_col`).
 
 ---
 
@@ -129,6 +134,47 @@ res <- read_dragen_cnv_vcf(
 You can pass multiple comma-separated suffixes; the default is
 `"vcf,vcf.gz"`.
 
+### 5. Write parsed tables to disk
+
+`read_dragen_cnv_vcf()` can dump the parsed tables to a directory for
+downstream tools that prefer flat files. The default writer is
+
+```r
+write.table(file = ..., row.names = FALSE, col.names = FALSE,
+            sep = "\t", quote = FALSE)
+```
+
+You only need to set `out_dir` to enable it.
+
+```r
+# Per-sample All_CNV TSVs (one file per VCF)
+read_dragen_cnv_vcf(
+  vcf_dir  = "cnv_vcfs/",
+  out_dir  = "cnv_tsv/",
+  out_type = "All_CNV"          # default
+)
+
+# Both All_CNV and Passed_CNV, CSV with a header row
+read_dragen_cnv_vcf(
+  vcf_dir  = "cnv_vcfs/",
+  out_dir  = "cnv_csv/",
+  out_type = c("All_CNV", "pass"),
+  out_sep  = ",",               # switches extension to .csv
+  out_col  = TRUE               # write a header line
+)
+```
+
+`out_type` is case-insensitive and accepts synonyms:
+
+| value                            | table written      |
+|----------------------------------|--------------------|
+| `"All_CNV"` / `"all"`            | full call set      |
+| `"Passed_CNV"` / `"passed"` / `"pass"` | PASS-only set |
+
+Unknown values raise an error. Files are named
+`<sample_id>.<table>.tsv` (or `.csv` when `out_sep = ","`). The
+directory is created if it does not already exist.
+
 ---
 
 ## Output schema
@@ -140,7 +186,7 @@ You can pass multiple comma-separated suffixes; the default is
 | chr        | char    | chromosome (e.g. `chr1`)                   |
 | start      | integer | 1-based start (from VCF `POS`)             |
 | end        | integer | end coordinate (parsed from `ID`)          |
-| cnv        | char    | `loss` / `gain` / `cn-LOH` / `LOH`         |
+| cnv        | char    | one of `loss` / `gain` / `cn-loh` / `loh` / `ref` / `inv` / `ins` / `bnd` |
 | CN         | numeric | total copy number from FORMAT/CN           |
 | sample_id  | char    | sample name (the column after FORMAT)      |
 
@@ -156,13 +202,21 @@ lines.
 
 ## ALT → cnv mapping
 
+All `cnv` values are lower-case. Any ALT not in this table raises an
+error (with the offending value and the file name) so silent
+misclassification is impossible.
+
 | DRAGEN ALT | Condition  | `cnv` value |
 |------------|------------|-------------|
 | `<DEL>`    | —          | `loss`      |
 | `<DUP>`    | —          | `gain`      |
-| `<LOH>`    | `CN == 2`  | `cn-LOH`    |
-| `<LOH>`    | otherwise  | `LOH`       |
-| anything else | —       | `NA`        |
+| `<LOH>`    | `CN == 2`  | `cn-loh`    |
+| `<LOH>`    | otherwise  | `loh`       |
+| `<REF>`    | —          | `ref`       |
+| `<INV>`    | —          | `inv`       |
+| `<INS>`    | —          | `ins`       |
+| `<BND>`    | —          | `bnd`       |
+| anything else | —       | **error**   |
 
 ---
 
