@@ -13,9 +13,10 @@ that:
 - splits the DRAGEN `FORMAT` field
   (`GT:CN:MCN:CNQ:MCNQ:CNF:MCNF:MF:SM:SD:MAF:BC:AS:PE`) into separate columns;
 - maps the DRAGEN ALT codes
-  (`<DEL>` / `<DUP>` / `<LOH>` / `<REF>` / `<INV>` / `<INS>` / `<BND>`)
-  into a tidy lower-case `cnv` category
-  (`loss` / `gain` / `cn-loh` / `loh` / `ref` / `inv` / `ins` / `bnd`),
+  (`<DEL>` / `<DUP>` / `<LOH>` / `<REF>` / `<INV>` / `<INS>` / `<BND>`,
+  plus the VCF missing marker `.` which DRAGEN uses for reference
+  segments) into a tidy `cnv` category
+  (`loss` / `gain` / `cn-LOH` / `LOH` / `ref` / `inv` / `ins` / `bnd`),
   and **errors out** on any ALT outside that set;
 - returns both the **PASS-only** call set and the **full** call set, plus
   the `##FORMAT=` lines from the VCF header;
@@ -186,7 +187,7 @@ directory is created if it does not already exist.
 | chr        | char    | chromosome (e.g. `chr1`)                   |
 | start      | integer | 1-based start (from VCF `POS`)             |
 | end        | integer | end coordinate (parsed from `ID`)          |
-| cnv        | char    | one of `loss` / `gain` / `cn-loh` / `loh` / `ref` / `inv` / `ins` / `bnd` |
+| cnv        | char    | one of `loss` / `gain` / `cn-LOH` / `LOH` / `ref` / `inv` / `ins` / `bnd` |
 | CN         | numeric | total copy number from FORMAT/CN           |
 | sample_id  | char    | sample name (the column after FORMAT)      |
 
@@ -202,21 +203,24 @@ lines.
 
 ## ALT → cnv mapping
 
-All `cnv` values are lower-case. Any ALT not in this table raises an
-error (with the offending value and the file name) so silent
-misclassification is impossible.
+Any ALT not in this table raises an error (with the offending value
+and the file name) so silent misclassification is impossible.
 
 | DRAGEN ALT | Condition  | `cnv` value |
 |------------|------------|-------------|
 | `<DEL>`    | —          | `loss`      |
 | `<DUP>`    | —          | `gain`      |
-| `<LOH>`    | `CN == 2`  | `cn-loh`    |
-| `<LOH>`    | otherwise  | `loh`       |
-| `<REF>`    | —          | `ref`       |
+| `<LOH>`    | `CN == 2`  | `cn-LOH`    |
+| `<LOH>`    | otherwise  | `LOH`       |
+| `<REF>` or `.` ¹ | —    | `ref`       |
 | `<INV>`    | —          | `inv`       |
 | `<INS>`    | —          | `ins`       |
 | `<BND>`    | —          | `bnd`       |
 | anything else | —       | **error**   |
+
+¹ DRAGEN's WGS CNV caller emits reference (no-CNV) segments with the
+VCF missing-value marker `.` in the `ALT` column rather than `<REF>`;
+both encodings are accepted.
 
 ---
 

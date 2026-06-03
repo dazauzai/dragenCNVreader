@@ -68,9 +68,9 @@ per-sample \code{format_lines}.
 \description{
 Reads CNV (copy-number variation) VCF files produced by the Illumina
 DRAGEN pipeline, parses the multi-key FORMAT field into separate
-columns, normalises the DRAGEN ALT codes into a tidy lower-case
-\code{cnv} category, and returns both the PASS-only and the full call
-set as data frames. Optionally writes the chosen table to disk.
+columns, normalises the DRAGEN ALT codes into a tidy \code{cnv}
+category, and returns both the PASS-only and the full call set as
+data frames. Optionally writes the chosen table to disk.
 
 Single-file and recursive batch modes are supported.
 }
@@ -80,15 +80,16 @@ FORMAT string, and pivoted into separate columns. Numeric-like columns
 (CN, MCN, CNQ, MCNQ, MF, SM, SD, MAF, BC, AS) are coerced to numeric.
 
 ALT values are stripped of \code{<>} brackets and validated against the
-supported set \code{DEL}, \code{DUP}, \code{LOH}, \code{REF},
-\code{INV}, \code{INS}, \code{BND}. Any other value raises an error.
-Supported ALTs are mapped to the lower-case \code{cnv} category:
+supported set \code{.} (DRAGEN's REF segment marker), \code{DEL},
+\code{DUP}, \code{LOH}, \code{REF}, \code{INV}, \code{INS},
+\code{BND}. Any other value raises an error. Supported ALTs are
+mapped to the \code{cnv} category:
 \itemize{
   \item \code{DEL} -> \code{loss}
   \item \code{DUP} -> \code{gain}
-  \item \code{LOH} with \code{CN == 2} -> \code{cn-loh}
-  \item \code{LOH} otherwise -> \code{loh}
-  \item \code{REF} -> \code{ref}
+  \item \code{LOH} with \code{CN == 2} -> \code{cn-LOH}
+  \item \code{LOH} otherwise -> \code{LOH}
+  \item \code{REF} or \code{.} -> \code{ref}
   \item \code{INV} -> \code{inv}
   \item \code{INS} -> \code{ins}
   \item \code{BND} -> \code{bnd}

@@ -2,9 +2,9 @@
 #'
 #' Reads CNV (copy-number variation) VCF files produced by the Illumina
 #' DRAGEN pipeline, parses the multi-key FORMAT field into separate
-#' columns, normalises the DRAGEN ALT codes into a tidy lower-case
-#' `cnv` category, and returns both the PASS-only and the full call set
-#' as data frames. Optionally writes the chosen table to disk.
+#' columns, normalises the DRAGEN ALT codes into a tidy `cnv`
+#' category, and returns both the PASS-only and the full call set as
+#' data frames. Optionally writes the chosen table to disk.
 #'
 #' Single-file and recursive batch modes are supported.
 #'
@@ -56,15 +56,15 @@
 #' numeric.
 #'
 #' ALT values are stripped of `<>` brackets and validated against the
-#' supported set `DEL`, `DUP`, `LOH`, `REF`, `INV`, `INS`, `BND`. Any
-#' other value raises an error. Supported ALTs are mapped to the
-#' lower-case `cnv` category:
+#' supported set `.` (DRAGEN's REF segment marker), `DEL`, `DUP`,
+#' `LOH`, `REF`, `INV`, `INS`, `BND`. Any other value raises an error.
+#' Supported ALTs are mapped to the `cnv` category:
 #'
 #' * `DEL` -> `loss`
 #' * `DUP` -> `gain`
-#' * `LOH` with `CN == 2` -> `cn-loh`
-#' * `LOH` otherwise -> `loh`
-#' * `REF` -> `ref`
+#' * `LOH` with `CN == 2` -> `cn-LOH`
+#' * `LOH` otherwise -> `LOH`
+#' * `REF` or `.` -> `ref`
 #' * `INV` -> `inv`
 #' * `INS` -> `ins`
 #' * `BND` -> `bnd`
@@ -121,9 +121,12 @@ read_dragen_cnv_vcf <- function(vcf_file  = NULL,
                                 out_sep   = "\t",
                                 out_col   = FALSE) {
 
-  # Canonical ALT -> cnv mapping. All cnv values are lower-case.
+  # Canonical ALT -> cnv mapping. DEL/DUP/LOH keep their original
+  # semantic names (loss/gain/cn-LOH/LOH); newer ALT codes are lower-cased.
+  # DRAGEN encodes reference (no-CNV) segments with the VCF missing
+  # marker `.` rather than `<REF>`, so both are accepted as REF.
   # Extend `allowed_alts` here to support new ALT codes in future.
-  allowed_alts <- c("DEL", "DUP", "LOH", "REF", "INV", "INS", "BND")
+  allowed_alts <- c(".", "DEL", "DUP", "LOH", "REF", "INV", "INS", "BND")
 
   # out_type lookup. Keys are lower-case; values are slot names in the
   # per-sample result list. Add new (key, slot) pairs here to expose
@@ -243,15 +246,15 @@ read_dragen_cnv_vcf <- function(vcf_file  = NULL,
            ". Allowed: ", paste(allowed_alts, collapse = ", "))
     }
 
-    # 10. Convert DRAGEN ALT into the lower-case cnv category
+    # 10. Convert DRAGEN ALT into the cnv category
     df_parsed <- df_parsed %>%
       dplyr::mutate(
         cnv = dplyr::case_when(
           ALT_clean == "DEL"             ~ "loss",
           ALT_clean == "DUP"             ~ "gain",
-          ALT_clean == "LOH" & CN == 2   ~ "cn-loh",
-          ALT_clean == "LOH"             ~ "loh",
-          ALT_clean == "REF"             ~ "ref",
+          ALT_clean == "LOH" & CN == 2   ~ "cn-LOH",
+          ALT_clean == "LOH"             ~ "LOH",
+          ALT_clean %in% c("REF", ".")   ~ "ref",
           ALT_clean == "INV"             ~ "inv",
           ALT_clean == "INS"             ~ "ins",
           ALT_clean == "BND"             ~ "bnd"

@@ -1,7 +1,7 @@
 Package: dragenCNVreader
 Type: Package
 Title: Read and Parse DRAGEN CNV VCF Files
-Version: 0.2.0
+Version: 0.2.1
 Authors@R: person(
     given = "Yiming",
     family = "Jiang",
@@ -11,8 +11,9 @@ Description: Reads CNV (copy-number variation) VCF files produced by the
     Illumina DRAGEN secondary-analysis pipeline. Parses the multi-key
     FORMAT field (GT, CN, MCN, CNQ, MCNQ, CNF, MCNF, MF, SM, SD, MAF,
     BC, AS, PE) into separate columns, normalises the DRAGEN ALT codes
-    (DEL/DUP/LOH/REF/INV/INS/BND) into a tidy lower-case 'cnv' category
-    (loss / gain / cn-loh / loh / ref / inv / ins / bnd), and returns
+    (DEL/DUP/LOH/REF/INV/INS/BND, plus the VCF missing marker '.' which
+    DRAGEN uses for reference segments) into a tidy 'cnv' category
+    (loss / gain / cn-LOH / LOH / ref / inv / ins / bnd), and returns
     both the PASS-only and the full call set as data frames. Unsupported
     ALT codes raise an error. Optionally writes the parsed tables to
     disk via 'out_dir' / 'out_type'. Single-file and recursive batch

@@ -1,8 +1,17 @@
+# dragenCNVreader 0.2.1
+
+- `read_dragen_cnv_vcf()`:
+  - Accept ALT `.` (VCF missing marker) as DRAGEN's reference-segment
+    encoding and map it to `cnv = "ref"`. The WGS CNV caller emits
+    REF segments this way rather than as `<REF>`, so 0.2.0 erroneously
+    rejected real WGS VCFs.
+  - Restore the original mixed-case `cn-LOH` / `LOH` for `<LOH>` ALTs.
+    The 0.2.0 lower-casing was an over-reach of the
+    "convert REF/INV/INS/BND to lower-case" request.
+
 # dragenCNVreader 0.2.0
 
 - `read_dragen_cnv_vcf()`:
-  - **Breaking:** the `cnv` category is now lower-case throughout
-    (`cn-loh` / `loh` instead of `cn-LOH` / `LOH`).
   - **Breaking:** unrecognised ALT codes now raise an error instead of
     falling through to `NA`. Allowed ALTs: `DEL`, `DUP`, `LOH`, `REF`,
     `INV`, `INS`, `BND`.
